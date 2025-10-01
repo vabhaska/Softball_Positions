@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Interactive Softball Field Lineup</title>
+  <style>
+    body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; padding:20px; background:#f3f6fb; }
+    .toolbar { display:flex; gap:10px; margin-bottom:12px; align-items:center }
+    .btn { background:#0b6efd; color:white; border:none; padding:8px 12px; border-radius:8px; cursor:pointer }
+    .btn.secondary { background:#6c757d }
+    .field-wrap { width:800px; max-width:100%; margin:0 auto; position:relative; }
+    /* Field appearance */
+    .field {
+      width:100%;
+      aspect-ratio: 1.05/1; /* keep a pleasant shape */
+      background: radial-gradient(circle at 40% 35%, #cfc 0%, #8fcf8f 45%, #6bbf6b 100%);
+      border-radius:16px; position:relative; box-shadow:0 6px 20px rgba(0,0,0,0.12);
+      overflow:hidden; padding:24px;
+    }
+    /* Infield dirt */
+    .infield {
+      position:absolute; width:62%; height:60%; left:19%; top:20%; background:linear-gradient(#d7b88f,#caa67a); border-radius:50%; transform:rotate(45deg); filter:drop-shadow(0 2px 3px rgba(0,0,0,0.12));
+    }
+    /* Bases */
+    .base { position:absolute; width:44px; height:44px; background:white; border:3px solid #c9c9c9; transform:rotate(45deg); display:flex; align-items:center; justify-content:center; font-weight:700 }
+    .base-label { transform:rotate(-45deg); font-size:11px }
+    .base.home { left:50%; top:73%; transform: translate(-50%, -50%) rotate(45deg) }
+    .base.first { left:72%; top:54%; transform: translate(-50%,-50%) rotate(45deg) }
+    .base.second { left:50%; top:28%; transform: translate(-50%,-50%) rotate(45deg) }
+    .base.third { left:28%; top:54%; transform: translate(-50%,-50%) rotate(45deg) }
+    /* Pitcher's circle */
+    .pitcher { position:absolute; left:50%; top:46%; transform:translate(-50%,-50%); width:76px; height:76px; border-radius:50%; background:#f3e0c6; display:flex; align-items:center; justify-content:center; border:3px solid #d4b892 }
+
+    /* Draggable player tokens */
+    .token { position:absolute; min-width:110px; padding:8px 10px; background:rgba(255,255,255,0.95); border-radius:10px; box-shadow:0 6px 12px rgba(0,0,0,0.10); cursor:grab; user-select:none; text-align:center; font-weight:600 }
+    .token:active { cursor:grabbing }
+    .pos-label { display:block; font-size:11px; color:#555 }
+
+    /* Initial placement of tokens (approx) */
+    #t-P { left:48%; top:44% }
+    #t-C { left:50%; top:82% }
+    #t-1B { left:74%; top:56% }
+    #t-2B { left:56%; top:40% }
+    #t-3B { left:26%; top:56% }
+    #t-SS { left:44%; top:46% }
+    #t-LF { left:10%; top:22% }
+    #t-CF { left:50%; top:10% }
+    #t-RF { left:90%; top:22% }
+
+    /* Print styling: hide controls and make field fill page */
+    @media print {
+      body { background: white }
+      .toolbar { display:none }
+      .field-wrap { width:100%; padding:0 }
+      .token { box-shadow:none; background:transparent; font-weight:700 }
+      .base { border:none; background:transparent }
+    }
+
+    /* Small helpers */
+    .legend { font-size:13px; color:#333; margin-left:8px }
+    .note { font-size:13px; color:#666; margin-top:10px }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button class="btn" id="printBtn">Print / Save as PDF</button>
+    <button class="btn secondary" id="resetBtn">Reset Positions</button>
+    <div class="legend">Drag the name tokens onto the field. Click a token to edit the name. Double-click token to lock/unlock.</div>
+  </div>
+
+  <div class="field-wrap">
+    <div class="field" id="field">
+      <div class="infield"></div>
+      <div class="base home"><span class="base-label">Home</span></div>
+      <div class="base first"><span class="base-label">1B</span></div>
+      <div class="base second"><span class="base-label">2B</span></div>
+      <div class="base third"><span class="base-label">3B</span></div>
+      <div class="pitcher">P</div>
+
+      <!-- Draggable tokens: IDs map to positions -->
+      <div class="token" id="t-P" data-pos="P"><span class="pos-label">P</span><span class="name">Vamsi (P)</span></div>
+      <div class="token" id="t-C" data-pos="C"><span class="pos-label">C</span><span class="name">Brianna (C)</span></div>
+      <div class="token" id="t-1B" data-pos="1B"><span class="pos-label">1B</span><span class="name">Marcus</span></div>
+      <div class="token" id="t-2B" data-pos="2B"><span class="pos-label">2B</span><span class="name">Natalie</span></div>
+      <div class="token" id="t-3B" data-pos="3B"><span class="pos-label">3B</span><span class="name">Russell</span></div>
+      <div class="token" id="t-SS" data-pos="SS"><span class="pos-label">SS</span><span class="name">Corbin</span></div>
+      <div class="token" id="t-LF" data-pos="LF"><span class="pos-label">LF</span><span class="name">Charles</span></div>
+      <div class="token" id="t-CF" data-pos="CF"><span class="pos-label">CF</span><span class="name">Matt Johnson</span></div>
+      <div class="token" id="t-RF" data-pos="RF"><span class="pos-label">RF</span><span class="name">Danielle</span></div>
+    </div>
+  </div>
+
+  <div class="note">Tip: Drag tokens. Click a token to rename. Double-click to lock position. Use Print to save to PDF (choose "Save as PDF").</div>
+
+  <script>
+    // Simple drag-and-drop for absolutely positioned tokens
+    const tokens = document.querySelectorAll('.token');
+    let zIndexCounter = 100;
+
+    tokens.forEach(t => {
+      t.style.position = 'absolute';
+      t.addEventListener('pointerdown', startDrag);
+      t.addEventListener('dblclick', () => toggleLock(t));
+      t.addEventListener('click', (e)=>{ if(!t.dataset.locked) editName(t); e.stopPropagation(); });
+    });
+
+    function startDrag(e){
+      const t = e.currentTarget;
+      if(t.dataset.locked === 'true') return;
+      t.setPointerCapture(e.pointerId);
+      const rect = t.getBoundingClientRect();
+      const parentRect = t.parentElement.getBoundingClientRect();
+      const offsetX = e.clientX - rect.left;
+      const offsetY = e.clientY - rect.top;
+      t.style.zIndex = ++zIndexCounter;
+
+      function move(ev){
+        const x = ev.clientX - parentRect.left - offsetX;
+        const y = ev.clientY - parentRect.top - offsetY;
+        // constrain inside field
+        const maxX = parentRect.width - rect.width;
+        const maxY = parentRect.height - rect.height;
+        t.style.left = Math.max(0, Math.min(maxX, x)) + 'px';
+        t.style.top = Math.max(0, Math.min(maxY, y)) + 'px';
+      }
+
+      function up(upEv){
+        t.releasePointerCapture(e.pointerId);
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+      }
+
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+    }
+
+    function editName(t){
+      const current = t.querySelector('.name').textContent;
+      const newName = prompt('Edit player name for ' + t.dataset.pos + ':', current);
+      if(newName !== null) t.querySelector('.name').textContent = newName.trim();
+    }
+
+    function toggleLock(t){
+      if(t.dataset.locked === 'true') { t.dataset.locked = 'false'; t.style.opacity = '1'; }
+      else { t.dataset.locked = 'true'; t.style.opacity = '0.85'; }
+    }
+
+    document.getElementById('resetBtn').addEventListener('click', ()=>{
+      if(!confirm('Reset tokens to their original positions?')) return;
+      // reload page to reset positions (simple approach)
+      location.reload();
+    });
+
+    document.getElementById('printBtn').addEventListener('click', ()=>{
+      // Hide outlines and buttons automatically via print media CSS
+      window.print();
+    });
+
+    // Allow saving the layout to localStorage and restoring
+    const saveKey = 'softball-layout-v1';
+    function saveLayout(){
+      const arr = [];
+      tokens.forEach(t=>{
+        arr.push({id:t.id, left:t.style.left, top:t.style.top, name:t.querySelector('.name').textContent, locked:t.dataset.locked||'false'});
+      });
+      localStorage.setItem(saveKey, JSON.stringify(arr));
+    }
+    function loadLayout(){
+      const raw = localStorage.getItem(saveKey);
+      if(!raw) return;
+      try{
+        const arr = JSON.parse(raw);
+        arr.forEach(item=>{
+          const el = document.getElementById(item.id);
+          if(el){ el.style.left = item.left; el.style.top = item.top; el.querySelector('.name').textContent = item.name; el.dataset.locked = item.locked; }
+        });
+      }catch(e){ console.warn('Failed to load layout', e) }
+    }
+    // autosave every 3 seconds when tokens move
+    let saveTimer;
+    window.addEventListener('pointerup', ()=>{ clearTimeout(saveTimer); saveTimer = setTimeout(saveLayout, 800); });
+    loadLayout();
+
+    // Dbl-click anywhere to unlock all
+    document.addEventListener('keydown', (e)=>{ if(e.key === 'u') { tokens.forEach(t=>t.dataset.locked='false'); alert('All tokens unlocked'); } });
+  </script>
+</body>
+</html>
