@@ -49,7 +49,7 @@
 </div>
 
 <script>
-const apiURL = "https://script.google.com/macros/s/AKfycbx8u8pUTWaeZn0HHfocuTE-9wMFOFCmCyXLklEdiOuMVLIwGfDa50SyM8Qr8UYF6NxL/exec?v=" + new Date().getTime();
+const apiURL = "https://script.google.com/macros/s/AKfycby-XVEqsdkUqBB_ElDKtwpUmi1tq8Dj26UaUvyN52YzrFzaFacahMS8DyGgAzsCej0/exec" + new Date().getTime();
 
 async function loadPlayers(){
   try{
