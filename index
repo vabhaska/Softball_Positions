@@ -94,7 +94,7 @@
   </div>
 
   <script>
-    const scriptURL = "https://script.google.com/macros/s/AKfycbx8u8pUTWaeZn0HHfocuTE-9wMFOFCmCyXLklEdiOuMVLIwGfDa50SyM8Qr8UYF6NxL/exec";
+    const scriptURL = "https://script.google.com/macros/s/AKfycby2ZVRnMHAJExHjhXLMSkAwKgFj54_jwy6fnInITPWBpwmysylj4sW7XoFJq3L817s/exec";
     let players = [];
     let password = "";
 
